@@ -12,13 +12,24 @@
 int main(int argc, const char * argv[]) {
     
     AVLTree<int> tree;
-    bool g = true;
-    tree.add(2,g);
-    tree.add(1,g);
-    tree.add(3,g);
-    tree.add(4,g);
-    tree.add(5,g);
-    tree.remove(1,true);
+    
+    
+    for(int i=0;i<200;i++){
+        tree.add(i);
+    }
+    for(int i=0;i<200;i++){
+        std::cout << tree.isVal(i) << "    " << i << std::endl;
+    }
+      
+    for(int i =0;i<80;i++){
+        int temp = std::rand()%200;
+        tree.remove(temp);
+    }
+    for(int i=0;i<200;i++){
+        std::cout << tree.isVal(i) << "    " << i << std::endl;
+    }
+    
+   // tree.remove(1,true);
     int i = 0;
     return 0;
 }
