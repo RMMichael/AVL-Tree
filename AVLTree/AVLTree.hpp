@@ -11,6 +11,7 @@
 
 #include <stdio.h>
 #include <stack>
+#include <queue>
 template<typename T>
 class AVLTree{
 private:
@@ -35,8 +36,9 @@ private:
         ~Node(){
         }
     };
-    
+    bool all;
     Node* head;
+    int size;
     
     Node* rightRotate(Node* node){
         Node* temp = node->left;
@@ -48,9 +50,12 @@ private:
         node->left = temp->right;
         temp->right = node;
         //update heights
-        temp->left->height = updateHeightOnRotate(temp->left);
-        temp->right->height = updateHeightOnRotate(temp->right);
-        temp->height = updateHeightOnRotate(temp);
+        if(temp->left!=nullptr)
+            temp->left->height = updateHeightOnRotate(temp->left);
+        if(temp->right!=nullptr)
+            temp->right->height = updateHeightOnRotate(temp->right);
+        if(temp!=nullptr)
+            temp->height = updateHeightOnRotate(temp);
         return temp;
     }
     Node* leftRotate(Node* node) {
@@ -61,17 +66,13 @@ private:
             head = temp;
         }
         node->right = temp->left;
-        if(temp->left!=nullptr){
-            Node* temp2 = temp->left;
-            temp->left = node;
-            temp->left->right = temp2;
-            temp->left->right->height = updateHeightOnRotate(temp->left->right)+1;
-        }else{
-            temp->left = node;
-        }
-        temp->left->height = updateHeightOnRotate(temp->left)+1;
-        temp->right->height = updateHeightOnRotate(temp->right)+1;
-        temp->height = updateHeightOnRotate(temp)+1;
+        temp->left = node;
+        if(temp->left!=nullptr)
+            temp->left->height = updateHeightOnRotate(temp->left);
+        if(temp->right!=nullptr)
+            temp->right->height = updateHeightOnRotate(temp->right);
+        if(temp!=nullptr)
+            temp->height = updateHeightOnRotate(temp);
         return temp;
     }
     Node* leftRight(Node* node) {
@@ -82,7 +83,7 @@ private:
         node->right = rightRotate(node->right);
         return leftRotate(node);
     }
-    Node* delNode(Node* node, bool all){
+    Node* delNode(Node* node){
         //two null children
         if(node->left==nullptr&&node->right==nullptr){
             delete node;
@@ -101,19 +102,107 @@ private:
             }
             //both non-null
         }else{
-            std::stack<T> st;
-            return node;
+           // Node* ins = node;
+            std::stack<Node*> st;
+            st.push(node);
+            Node* find = node->right;
+            st.push(find);
+            while(find->left!=nullptr){
+                find = find->left;
+                st.push(find);
+            }
+            node->val = find->val;
+            Node* temp = delNode(find);
+            st.pop();
+            (st.top()->right!=nullptr&&st.top()->right->val==node->val)?
+                    st.top()->right = temp:
+                    st.top()->left = temp;
+            bool done = false;
+            while(!st.empty()){
+                st.top()->height = std::max(getHeight(st.top()->left),getHeight(st.top()->right))+1;
+                
+                int balance = getHeight(st.top()->left) - getHeight(st.top()->right);
+                
+                if(balance > 1){
+                    if(st.top()->left!= nullptr&&st.top()->left->left!=nullptr){
+                        Node* check = st.top();
+                        Node* temp = rightRotate(st.top());
+                        st.pop();
+                        done = true;
+                        if(!st.empty()){
+                            (st.top()->left==check)?
+                                st.top()->left = temp:
+                                st.top()->right =temp;
+                        }else{
+                            node = temp;
+                        }
+                    }else{
+                        Node* check = st.top();
+                        Node* temp = leftRight(st.top());
+                        st.pop();
+                        done = true;
+                        if(!st.empty()){
+                            (st.top()->left==check)?
+                                st.top()->left = temp:
+                                st.top()->right =temp;
+                        }else{
+                            node = temp;
+                        }
+                    }
+                }else if(balance<-1){
+                    if(st.top()->right!=nullptr&&st.top()->right->right!=nullptr){
+                        Node* check = st.top();
+                        Node* temp = leftRotate(st.top());
+                        st.pop();
+                        done = true;
+                        if(!st.empty()){
+                            (st.top()->left==check)?
+                                st.top()->left = temp:
+                                st.top()->right =temp;
+                        }else{
+                            node = temp;
+                        }
+                    }else{
+                        Node* check = st.top();
+                        Node* temp = rightLeft(st.top());
+                        st.pop();
+                        done = true;
+                        if(!st.empty()){
+                            (st.top()->left==check)?
+                                st.top()->left = temp:
+                                st.top()->right =temp;
+                        }else{
+                            node = temp;
+                        }
+                    }
+                }else{
+                    st.pop();
+                }
+            }
+            //return node;
         }
-        
+        return node;
     }
     int updateHeightOnRotate(Node* node){
-        return std::max(getHeight(node->left),getHeight(node->right));
+        if(node!=nullptr){
+        return std::max(getHeight(node->left),getHeight(node->right))+1;
+        }
+        else{
+            return 0;
+        }
     }
     int getHeight(Node* node){
         if(node!=nullptr){
             return node->height;
         }else{
             return 0;
+        }
+    }
+    Node* append(Node* node,Node* append){
+        if(node!=nullptr){
+            if(node->val<append->val){
+                
+            }
         }
     }
     Node* addExist(Node* node,T v){
@@ -128,26 +217,47 @@ private:
     
 public:
     AVLTree();
+    AVLTree(bool all);
     ~AVLTree();
     AVLTree(const AVLTree &c);
     AVLTree(AVLTree &&c);
     AVLTree &operator=(const AVLTree &c);
     AVLTree &operator=(AVLTree &&c);
-    void add(T value,bool all);
-    int remove(T value, bool all);
+    bool isVal(T value) const;
+    void add(T value);
+    int remove(T value);
 };
 
 template <typename T>
 AVLTree<T>::AVLTree()
-:head{nullptr}{
+:head{nullptr},size{0},all{false}{
+}
+template <typename T>
+AVLTree<T>::AVLTree(bool all)
+:head{nullptr},size{0}{
+    this->all = all;
 }
 template <typename T>
 AVLTree<T>::~AVLTree(){
     
 }
+template <typename T>
+bool AVLTree<T>::isVal(T value) const{
+    Node* searchNode = head;
+    while(searchNode!=nullptr){
+        if(searchNode->val==value){
+            break;
+        }
+        (searchNode->val < value)?
+            searchNode= searchNode->right:
+            searchNode = searchNode->left;
+    }
+    return(searchNode!=nullptr);
+}
 
 template <typename T>
-void AVLTree<T>::add(T value, bool all){
+void AVLTree<T>::add(T value){
+    size++;
     if(head==nullptr){
         head = new Node(value);
         head->isHead = 0;
@@ -157,30 +267,32 @@ void AVLTree<T>::add(T value, bool all){
     Node* it = head;
     while(it!=nullptr){
         st.push(it);
-        if(value < it->val){
+        if(value==st.top()->val){
+        if(all==false){
+            return;
+        }else{
+            st.top() = addExist(st.top(), value);
+            it = nullptr;
+            }
+        }
+        else if(value < it->val){
             it = it->left;
         }else{
             it=it->right;
         }
     }
-    if(value==st.top()->val){
-        if(all==false){
-            return;
-        }else{
-            st.top() = addExist(st.top(), value);
-        }
-    }else{
-        if(value<st.top()->val){
-            st.top()->left = new Node(value);
-        }else{
-            st.top()->right = new Node(value);
-        }
+    if(value<st.top()->val){
+        st.top()->left = new Node(value);
+    }else if(value!=st.top()->val){
+        st.top()->right = new Node(value);
     }
+    bool done = false;
     while(!st.empty()){
+        
         st.top()->height = std::max(getHeight(st.top()->left), getHeight(st.top()->right))+1;
+        
         int balance = getHeight(st.top()->left) - getHeight(st.top()->right);
         
-        bool done = false;
         if(balance > 1){
             if(st.top()->left!= nullptr&&st.top()->left->left!=nullptr){
                 Node* check = st.top();
@@ -189,8 +301,8 @@ void AVLTree<T>::add(T value, bool all){
                 done = true;
                 if(!st.empty()){
                     (st.top()->left==check)?
-                    st.top()->left = temp:
-                    st.top()->right =temp;
+                        st.top()->left = temp:
+                        st.top()->right =temp;
                 }
             }else{
                 Node* check = st.top();
@@ -199,37 +311,40 @@ void AVLTree<T>::add(T value, bool all){
                 done = true;
                 if(!st.empty()){
                     (st.top()->left==check)?
-                    st.top()->left = temp:
-                    st.top()->right =temp;
+                        st.top()->left = temp:
+                        st.top()->right =temp;
                 }
-                
             }
         }else if(balance<-1){
             if(st.top()->right!=nullptr&&st.top()->right->right!=nullptr){
+                Node* check = st.top();
                 Node* temp = leftRotate(st.top());
                 st.pop();
                 done = true;
                 if(!st.empty()){
-                    st.top()->right = temp;
+                    (st.top()->left==check)?
+                        st.top()->left = temp:
+                        st.top()->right =temp;
                 }
             }else{
+                Node* check = st.top();
                 Node* temp = rightLeft(st.top());
                 st.pop();
                 done = true;
                 if(!st.empty()){
-                    st.top()->right = temp;
+                    (st.top()->left==check)?
+                        st.top()->left = temp:
+                        st.top()->right =temp;
                 }
             }
         }else{
-            if(!done)
-                done = false;
             st.pop();
         }
     }
 }
 //return 0 if not found, -1 if error, 1 if success
 template <typename T>
-int AVLTree<T>::remove(T value, bool all){
+int AVLTree<T>::remove(T value){
     std::stack<Node*> st;
     Node* it;
     if(head==nullptr){
@@ -240,81 +355,91 @@ int AVLTree<T>::remove(T value, bool all){
     }
     while(it!=nullptr){
         if(it->val==value){
+            if(st.top()==head){
+                head = delNode(st.top());
+                break;
+            }
+            Node* temp = st.top();
+            st.pop();
             if(st.top()->left!=nullptr&&st.top()->left->val==value){
-                st.top()->left = delNode(st.top(), all);
+                st.top()->left = delNode(temp);
             }
             else{
-                st.top()->right = delNode(st.top()->right,all);
+                st.top()->right = delNode(temp);
             }
+            break;
         }
-        if(value<=it->val){
+        else if(value<it->val){
             it = it->left;
-            if(it!=nullptr&&it->val<value){
+            st.push(it);
+            if(it==nullptr){
                 return 0;
             }
-        }else{
+            
+        }
+        else if(value >it->val){
             it = it->right;
-            if(it!=nullptr&&it->val>value){
+            st.push(it);
+            if(it==nullptr){
                 return 0;
             }
         }
-        st.push(it);
-    }
-    if(it==nullptr)
-        return 0;
-    while(!st.empty()){
         
-        int balance = getHeight(st.top()->left)-getHeight(st.top()->right);
-        //off to left
-        if(balance>1){
-            //check left left
-            if(st.top()->left!=nullptr&&st.top()->left!=nullptr){
+    }
+    bool done = false;
+    while(!st.empty()){
+        st.top()->height = std::max(getHeight(st.top()->left),getHeight(st.top()->right))+1;
+        int balance = getHeight(st.top()->left) - getHeight(st.top()->right);
+        
+        if(balance > 1){
+            if(st.top()->left!= nullptr&&st.top()->left->left!=nullptr){
                 Node* check = st.top();
                 Node* temp = rightRotate(st.top());
+                st.pop();
+                done = true;
                 if(!st.empty()){
-                    st.pop();
                     (st.top()->left==check)?
-                    st.top()->left = temp:
-                    st.top()->right =temp;
-                    continue;
+                        st.top()->left = temp:
+                        st.top()->right =temp;
                 }
-            }else{//node is left right
+            }else{
                 Node* check = st.top();
                 Node* temp = leftRight(st.top());
+                st.pop();
+                done = true;
                 if(!st.empty()){
-                    st.pop();
                     (st.top()->left==check)?
-                    st.top()->left = temp:
-                    st.top()->right = temp;
-                    continue;
+                        st.top()->left = temp:
+                        st.top()->right =temp;
                 }
             }
-        }else if(balance<1){
-            if(st.top()->right!=nullptr&&st.top()->left!=nullptr){
+        }else if(balance<-1){
+            if(st.top()->right!=nullptr&&st.top()->right->right!=nullptr){
                 Node* check = st.top();
                 Node* temp = leftRotate(st.top());
+                st.pop();
+                done = true;
                 if(!st.empty()){
-                    st.pop();
                     (st.top()->left==check)?
-                    st.top()->left = temp:
-                    st.top()->right =temp;
-                    continue;
+                        st.top()->left = temp:
+                        st.top()->right =temp;
                 }
             }else{
                 Node* check = st.top();
                 Node* temp = rightLeft(st.top());
+                st.pop();
+                done = true;
                 if(!st.empty()){
-                    st.pop();
                     (st.top()->left==check)?
-                    st.top()->left = temp:
-                    st.top()->right =temp;
-                    continue;
+                        st.top()->left = temp:
+                        st.top()->right =temp;
                 }
             }
+        }else{
+            st.pop();
         }
-        st.pop();
     }
-    return 0;
+    return 1;
 }
 
 
